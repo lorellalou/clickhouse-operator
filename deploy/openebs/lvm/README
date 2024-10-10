@@ -1,0 +1,78 @@
+## OpenEBS - LocalPV-LVM CSI Driver with ClickHouse
+LocalPV-LVM CSI Driver became GA in August 2021 (with the release v0.8.0). It is now a very mature product and a core component of the OpenEBS storage platform.
+Due to the major adoption of LocalPV-LVM (+50,000 users), this Data-Engine is now being unified and integrated into the core OpenEBS Storage platform; instead of being maintained as an external Data-Engine within our project.
+
+## Setup
+
+Find the disk which you want to use for the LocalPV-LVM. Note: For testing you can use the loopback device.
+
+```
+truncate -s 1024G /tmp/disk.img
+sudo losetup -f /tmp/disk.img --show
+```
+
+> [!NOTE]
+> - This is the old maual config process <BR>
+> - LocalPV-LVM will num dynamically provision the VG fro you <BR>
+> - The PV, VG and LV names will be dynamically provisioned by OpenEBS LocalPV-LVM as K8s unique entities (for safety, you cannot provide your own PV, VG or LV names)
+
+Create the Volume group on all the nodes, which will be used by the LVM2 Driver for provisioning the volumes
+
+```
+sudo pvcreate /dev/loop0
+sudo vgcreate vg-test /dev/loop0       ## here lvmvg is the volume group name to be created
+```
+
+Display the Volume Group
+
+```
+vgdisplay
+```
+
+## Installation
+
+Install the latest release of OpenEBS LVM2 LocalPV-LVM driver by running the following command. Note: All nodes must be running the same version of LocalPV-LVM, LMV2, device-mapper & dm-snapshot.
+
+Create a variable containing the K8s namesapce
+
+```bash
+OPENEBS_NAMESPACE=openebs
+```
+
+Install the OpenEBS component without the distributed component (MayaStor) and ZFS
+
+```bash
+helm repo add openebs https://openebs.github.io/openebs
+helm repo update
+helm install openebs --namespace ${OPENEBS_NAMESPACE} openebs/openebs --set engines.replicated.mayastor.enabled=false --set engines.local.zfs.enabled=false --create-namespace --version 4.1.1
+```
+
+List the OpenEBS chart and check that it's deployed
+
+```bash
+helm list -n ${OPENEBS_NAMESPACE}
+NAME   	NAMESPACE	REVISION	UPDATED                              	STATUS  	CHART        	APP VERSION
+openebs	openebs  	1       	2024-06-01 12:28:49.358189 +0200 CEST	deployed	openebs-4.0.1	4.0.1
+```
+
+You can uninstall the OpenEBS componenent if there is any issues or for testing different version
+
+```bash
+helm uninstall openebs --namespace ${OPENEBS_NAMESPACE}
+```
+
+Create a new Storage Class
+```
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+allowVolumeExpansion: true
+metadata:
+  name: openebs-lvm-test
+parameters:
+  fsType: xfs
+  storage: lvm
+  vgpattern: vg-test
+provisioner: local.csi.openebs.io
+reclaimPolicy: Retain
+volumeBindingMode: Immediate
+```
