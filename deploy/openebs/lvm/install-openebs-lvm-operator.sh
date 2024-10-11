@@ -81,7 +81,6 @@ kubectl delete crd volumesnapshotclasses.snapshot.storage.k8s.io
 kubectl delete crd volumesnapshotcontents.snapshot.storage.k8s.io
 kubectl delete crd volumesnapshots.snapshot.storage.k8s.io
 
-
 # Setup OPENEBS-operator into dedicated namespace via kustomize
 helm install openebs --namespace ${OPENEBS_NAMESPACE} openebs/openebs --set engines.replicated.mayastor.enabled=false --set engines.local.zfs.enabled=false --create-namespace --version 4.1.1
 
